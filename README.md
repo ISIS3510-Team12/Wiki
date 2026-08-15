@@ -9,6 +9,8 @@ Useful links and references for course activities, deliverables, and related mat
 | Resource | Description |
 | -------- | ----------- |
 | [Wiki](https://github.com/ISIS3510-Team12/Wiki/wiki) | Main page for all course activities and deliverables |
+| [Kotlin](https://github.com/ISIS3510-Team12/Kotlin) | Main repository for the Kotlin app |
+| [Flutter](https://github.com/ISIS3510-Team12/Flutter) | Main repository for the Flutter app |
 
 ---
 ## Team Members
