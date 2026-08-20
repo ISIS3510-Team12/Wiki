@@ -11,6 +11,7 @@
 
 : "${SPRINT:?SPRINT is required}"
 : "${MICRO_SPRINT:?MICRO_SPRINT is required}"
+: "${PRIORITY:?PRIORITY is required}"
 
 : "${TRIGGERED_BY:?TRIGGERED_BY is required}"
 

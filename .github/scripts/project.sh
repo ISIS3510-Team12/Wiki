@@ -29,6 +29,16 @@ get_project_information() {
                       }
                     }
                   }
+
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+
+                    options {
+                      id
+                      name
+                    }
+                  }
                 }
               }
             }
@@ -96,6 +106,27 @@ get_project_information() {
     MICRO_SPRINT_ITERATION_ID=""
   fi
 
+  PRIORITY_FIELD_ID=$(
+    echo "$PROJECT_DATA" |
+      jq -r '
+        .data.organization.projectV2.fields.nodes[]
+        | select(.name == "Priority")
+        | .id
+      '
+  )
+
+  PRIORITY_OPTION_ID=$(
+    echo "$PROJECT_DATA" |
+      jq -r \
+        --arg priority "$PRIORITY" '
+          .data.organization.projectV2.fields.nodes[]
+          | select(.name == "Priority")
+          | .options[]
+          | select(.name == $priority)
+          | .id
+        '
+  )
+
   validate_project_information
 }
 
@@ -158,6 +189,42 @@ set_iteration() {
     --silent
 }
 
+set_single_select() {
+  local item_id="$1"
+  local field_id="$2"
+  local option_id="$3"
+
+  GH_TOKEN="$PROJECT_TOKEN" gh api graphql \
+    -f query='
+      mutation(
+        $projectId: ID!,
+        $itemId: ID!,
+        $fieldId: ID!,
+        $optionId: String!
+      ) {
+        updateProjectV2ItemFieldValue(
+          input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: {
+              singleSelectOptionId: $optionId
+            }
+          }
+        ) {
+          projectV2Item {
+            id
+          }
+        }
+      }
+    ' \
+    -F projectId="$PROJECT_ID" \
+    -F itemId="$item_id" \
+    -F fieldId="$field_id" \
+    -F optionId="$option_id" \
+    --silent
+}
+
 configure_project_item() {
   local item_id="$1"
 
@@ -176,4 +243,11 @@ configure_project_item() {
       "$MICRO_SPRINT_FIELD_ID" \
       "$MICRO_SPRINT_ITERATION_ID"
   fi
+
+  echo "Setting Priority: $PRIORITY"
+
+  set_single_select \
+    "$item_id" \
+    "$PRIORITY_FIELD_ID" \
+    "$PRIORITY_OPTION_ID"
 }

@@ -1,4 +1,4 @@
-name: Create Documentation Issues
+name: Create Issues
 
 on:
   workflow_dispatch:
@@ -10,7 +10,6 @@ on:
         type: choice
         options:
           - none
-          - team
           - random
 
       issue_prefix:
@@ -65,6 +64,16 @@ on:
           - Micro Sprint 3
           - Micro Sprint 4
 
+      priority:
+        description: "Priority"
+        required: true
+        default: "Medium"
+        type: choice
+        options:
+          - High
+          - Medium
+          - Low
+
 permissions:
   contents: read
   issues: write
@@ -82,19 +91,15 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: "4"
-
           ISSUE_PREFIX: ${{ inputs.issue_prefix }}
           ISSUE_TITLE: ${{ inputs.issue_title }}
           ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
           REPETITIONS: ${{ inputs.repetitions }}
-
           SPRINT: ${{ inputs.sprint }}
           MICRO_SPRINT: ${{ inputs.micro_sprint }}
-
+          PRIORITY: ${{ inputs.priority }}
           ASSIGNMENT_MODE: ${{ inputs.assignment_mode }}
-
           TRIGGERED_BY: ${{ github.actor }}
-
           ISSUE_TOKEN: ${{ github.token }}
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 

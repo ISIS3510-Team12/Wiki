@@ -48,7 +48,18 @@ validate_project_information() {
     fi
   fi
 
+  if [[ -z "$PRIORITY_FIELD_ID" || "$PRIORITY_FIELD_ID" == "null" ]]; then
+    echo "Error: Project field 'Priority' was not found."
+    exit 1
+  fi
+
+  if [[ -z "$PRIORITY_OPTION_ID" || "$PRIORITY_OPTION_ID" == "null" ]]; then
+    echo "Error: Priority option '$PRIORITY' was not found."
+    exit 1
+  fi
+
   echo "Project ID: $PROJECT_ID"
   echo "Sprint: $SPRINT"
   echo "Micro Sprint: $MICRO_SPRINT"
+  echo "Priority: $PRIORITY"
 }
