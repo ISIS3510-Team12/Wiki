@@ -32,6 +32,7 @@ ASSIGN_TEAM="${ASSIGN_TEAM:-false}"
 
 TEAM_MEMBERS=(
   "valiwisdev"
+  # Add members
 )
 
 # ============================================================
