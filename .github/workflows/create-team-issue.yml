@@ -22,11 +22,6 @@ on:
         required: true
         type: string
 
-      issue_documentation:
-        description: "Issue documentation"
-        required: true
-        type: string
-
       sprint:
         description: "Sprint"
         required: true
@@ -78,7 +73,6 @@ jobs:
           PROJECT_NUMBER: "4"
           ISSUE_PREFIX: ${{ inputs.issue_prefix }}
           ISSUE_TITLE: ${{ inputs.issue_title }}
-          ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
           REPETITIONS: "1"
           SPRINT: ${{ inputs.sprint }}
           MICRO_SPRINT: ${{ inputs.micro_sprint }}

@@ -6,7 +6,6 @@
 
 : "${ISSUE_PREFIX:?ISSUE_PREFIX is required}"
 : "${ISSUE_TITLE:?ISSUE_TITLE is required}"
-: "${ISSUE_DOCUMENTATION:?ISSUE_DOCUMENTATION is required}"
 : "${REPETITIONS:?REPETITIONS is required}"
 
 : "${SPRINT:?SPRINT is required}"

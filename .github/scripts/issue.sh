@@ -53,8 +53,6 @@ generate_issue_title() {
 
 generate_issue_body() {
   cat <<EOF
-$ISSUE_DOCUMENTATION
-
 ---
 
 Created through GitHub Actions by @$TRIGGERED_BY
