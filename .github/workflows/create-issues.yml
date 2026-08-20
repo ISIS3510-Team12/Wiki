@@ -47,13 +47,10 @@ jobs:
 
     env:
       REPOSITORY: ${{ github.repository }}
-      PROJECT_OWNER: ISIS3510-Team12
+      PROJECT_OWNER: ${{ github.repository_owner }}
       PROJECT_NUMBER: "4"
 
     steps:
-      # =========================================================
-      # 1. Get Project + Sprint/Micro Sprint IDs
-      # =========================================================
       - name: Get project information
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
@@ -61,14 +58,11 @@ jobs:
           MICRO_SPRINT: ${{ inputs.micro_sprint }}
 
         run: |
-          echo "Reading GitHub Project information..."
-
           PROJECT_DATA=$(gh api graphql -f query='
             query($login: String!, $number: Int!) {
               organization(login: $login) {
                 projectV2(number: $number) {
                   id
-                  title
 
                   fields(first: 50) {
                     nodes {
@@ -97,24 +91,15 @@ jobs:
           -F login="$PROJECT_OWNER" \
           -F number="$PROJECT_NUMBER")
 
-          # -----------------------------------------------------
-          # Project ID
-          # -----------------------------------------------------
           PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r \
             '.data.organization.projectV2.id')
 
-          # -----------------------------------------------------
-          # Sprint field ID
-          # -----------------------------------------------------
           SPRINT_FIELD_ID=$(echo "$PROJECT_DATA" | jq -r '
             .data.organization.projectV2.fields.nodes[]
             | select(.name == "Sprint")
             | .id
           ')
 
-          # -----------------------------------------------------
-          # Selected Sprint iteration ID
-          # -----------------------------------------------------
           SPRINT_ITERATION_ID=$(echo "$PROJECT_DATA" | jq -r \
             --arg sprint "$SPRINT" '
               .data.organization.projectV2.fields.nodes[]
@@ -127,18 +112,12 @@ jobs:
               | .id
             ')
 
-          # -----------------------------------------------------
-          # Micro Sprint field ID
-          # -----------------------------------------------------
           MICRO_SPRINT_FIELD_ID=$(echo "$PROJECT_DATA" | jq -r '
             .data.organization.projectV2.fields.nodes[]
             | select(.name == "Micro Sprint")
             | .id
           ')
 
-          # -----------------------------------------------------
-          # Selected Micro Sprint iteration ID
-          # -----------------------------------------------------
           if [ "$MICRO_SPRINT" != "None" ]; then
 
             MICRO_SPRINT_ITERATION_ID=$(echo "$PROJECT_DATA" | jq -r \
@@ -157,57 +136,6 @@ jobs:
             MICRO_SPRINT_ITERATION_ID=""
           fi
 
-          # -----------------------------------------------------
-          # Validate Project
-          # -----------------------------------------------------
-          if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
-            echo "ERROR: Could not find Project #$PROJECT_NUMBER"
-            exit 1
-          fi
-
-          # -----------------------------------------------------
-          # Validate Sprint property
-          # -----------------------------------------------------
-          if [ -z "$SPRINT_FIELD_ID" ] || [ "$SPRINT_FIELD_ID" = "null" ]; then
-            echo "ERROR: Project field 'Sprint' was not found"
-            exit 1
-          fi
-
-          if [ -z "$SPRINT_ITERATION_ID" ] || [ "$SPRINT_ITERATION_ID" = "null" ]; then
-            echo "ERROR: Sprint '$SPRINT' was not found"
-            exit 1
-          fi
-
-          # -----------------------------------------------------
-          # Validate Micro Sprint property only when selected
-          # -----------------------------------------------------
-          if [ "$MICRO_SPRINT" != "None" ]; then
-
-            if [ -z "$MICRO_SPRINT_FIELD_ID" ] || \
-               [ "$MICRO_SPRINT_FIELD_ID" = "null" ]; then
-
-              echo "ERROR: Project field 'Micro Sprint' was not found"
-              exit 1
-            fi
-
-            if [ -z "$MICRO_SPRINT_ITERATION_ID" ] || \
-               [ "$MICRO_SPRINT_ITERATION_ID" = "null" ]; then
-
-              echo "ERROR: Micro Sprint '$MICRO_SPRINT' was not found"
-              exit 1
-            fi
-          fi
-
-          echo "Project found."
-          echo "Sprint: $SPRINT"
-
-          if [ "$MICRO_SPRINT" != "None" ]; then
-            echo "Micro Sprint: $MICRO_SPRINT"
-          else
-            echo "Micro Sprint: Not selected"
-          fi
-
-          # Make IDs available to the next steps
           echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
 
           echo "SPRINT_FIELD_ID=$SPRINT_FIELD_ID" >> "$GITHUB_ENV"
@@ -217,16 +145,14 @@ jobs:
           echo "MICRO_SPRINT_ITERATION_ID=$MICRO_SPRINT_ITERATION_ID" >> "$GITHUB_ENV"
 
       # =========================================================
-      # 2. Create issues as github-actions[bot]
+      # Create issues in current repository
       # =========================================================
       - name: Create documentation issues
         env:
           GH_TOKEN: ${{ github.token }}
-
           ISSUE_TITLE: ${{ inputs.issue_title }}
           ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
           REPETITIONS: ${{ inputs.repetitions }}
-
           TRIGGERED_BY: ${{ github.actor }}
 
         run: |
@@ -234,7 +160,6 @@ jobs:
 
           for i in $(seq 1 "$REPETITIONS"); do
 
-            # Add numbering only when more than one issue is created
             if [ "$REPETITIONS" -gt 1 ]; then
               TITLE="$ISSUE_TITLE #$i"
             else
@@ -247,8 +172,6 @@ jobs:
 
           Created through GitHub Actions by @$TRIGGERED_BY"
 
-            echo "Creating issue: $TITLE"
-
             ISSUE=$(gh api \
               --method POST \
               "repos/$REPOSITORY/issues" \
@@ -260,26 +183,20 @@ jobs:
 
             echo "Created: $ISSUE_URL"
 
-            # Save GraphQL node ID for the Project step
             echo "$ISSUE_NODE_ID" >> created_issues.txt
 
           done
 
       # =========================================================
-      # 3. Add issues to Backlog and set Project properties
+      # Add issues to Project
       # =========================================================
-      - name: Add issues to Backlog project
+      - name: Add issues to project
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 
         run: |
           while read -r ISSUE_NODE_ID; do
 
-            echo "Adding issue to Backlog..."
-
-            # ---------------------------------------------------
-            # Add issue to Project
-            # ---------------------------------------------------
             ITEM_DATA=$(gh api graphql -f query='
               mutation($projectId: ID!, $contentId: ID!) {
                 addProjectV2ItemById(
@@ -300,18 +217,7 @@ jobs:
             ITEM_ID=$(echo "$ITEM_DATA" | jq -r \
               '.data.addProjectV2ItemById.item.id')
 
-            if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
-              echo "ERROR: Could not add issue to Project"
-              exit 1
-            fi
-
-            echo "Added to Project."
-
-            # ---------------------------------------------------
-            # Set Sprint property
-            # ---------------------------------------------------
-            echo "Setting Sprint..."
-
+            # Set Sprint
             gh api graphql -f query='
               mutation(
                 $projectId: ID!,
@@ -340,12 +246,8 @@ jobs:
             -F fieldId="$SPRINT_FIELD_ID" \
             -F iterationId="$SPRINT_ITERATION_ID"
 
-            # ---------------------------------------------------
-            # Set Micro Sprint property only when selected
-            # ---------------------------------------------------
+            # Set Micro Sprint only if selected
             if [ -n "$MICRO_SPRINT_ITERATION_ID" ]; then
-
-              echo "Setting Micro Sprint..."
 
               gh api graphql -f query='
                 mutation(
@@ -376,7 +278,5 @@ jobs:
               -F iterationId="$MICRO_SPRINT_ITERATION_ID"
 
             fi
-
-            echo "Issue configured successfully."
 
           done < created_issues.txt
