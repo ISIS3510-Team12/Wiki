@@ -52,9 +52,6 @@ jobs:
       PROJECT_NUMBER: "4"
 
     steps:
-      # ---------------------------------------------------------
-      # Get Project IDs and Iteration IDs
-      # ---------------------------------------------------------
       - name: Get project fields and iterations
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
@@ -145,19 +142,12 @@ jobs:
           echo "MICRO_SPRINT_FIELD_ID=$MICRO_SPRINT_FIELD_ID" >> "$GITHUB_ENV"
           echo "MICRO_SPRINT_ITERATION_ID=$MICRO_SPRINT_ITERATION_ID" >> "$GITHUB_ENV"
 
-      # ---------------------------------------------------------
-      # Create Issues
-      # ---------------------------------------------------------
       - name: Create documentation issues
         env:
-          # GitHub Actions creates the issue
           GH_TOKEN: ${{ github.token }}
-
           ISSUE_TITLE: ${{ inputs.issue_title }}
           ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
           REPETITIONS: ${{ inputs.repetitions }}
-
-          # Person who pressed "Run workflow"
           TRIGGERED_BY: ${{ github.actor }}
 
         run: |
@@ -188,12 +178,8 @@ jobs:
 
           done
 
-      # ---------------------------------------------------------
-      # Add Issues to Project and assign Sprint fields
-      # ---------------------------------------------------------
       - name: Add issues to Backlog project
         env:
-          # PAT is used only for Organization Project access
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 
         run: |
