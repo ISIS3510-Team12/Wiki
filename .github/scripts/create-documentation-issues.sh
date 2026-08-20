@@ -24,6 +24,15 @@ set -euo pipefail
 : "${ISSUE_TOKEN:?ISSUE_TOKEN is required}"
 : "${PROJECT_TOKEN:?PROJECT_TOKEN is required}"
 
+ASSIGN_TEAM="${ASSIGN_TEAM:-false}"
+
+# ============================================================
+# Team members
+# ============================================================
+
+TEAM_MEMBERS=(
+  "valiwisdev"
+)
 
 # ============================================================
 # Logging
@@ -209,13 +218,23 @@ create_issue() {
   local title="$1"
   local body="$2"
 
-  GH_TOKEN="$ISSUE_TOKEN" gh api \
-    --method POST \
-    "repos/$REPOSITORY/issues" \
-    -f title="$title" \
-    -f body="$body"
-}
+  local args=(
+    --method POST
+    "repos/$REPOSITORY/issues"
+    -f "title=$title"
+    -f "body=$body"
+  )
 
+  if [[ "$ASSIGN_TEAM" == "true" ]]; then
+    echo "Assigning issue to all team members."
+
+    for member in "${TEAM_MEMBERS[@]}"; do
+      args+=(-f "assignees[]=$member")
+    done
+  fi
+
+  GH_TOKEN="$ISSUE_TOKEN" gh api "${args[@]}"
+}
 
 # ============================================================
 # Add issue to GitHub Project
