@@ -3,6 +3,16 @@ name: Create Documentation Issues
 on:
   workflow_dispatch:
     inputs:
+      assignment_mode:
+        description: "Assignment mode"
+        required: true
+        default: "none"
+        type: choice
+        options:
+          - none
+          - team
+          - random
+
       issue_prefix:
         description: "Issue title prefix"
         required: true
@@ -12,10 +22,10 @@ on:
           - MS2
           - MS3
           - MS4
-          - SPRINT1
-          - SPRINT2
-          - SPRINT3
-          - SPRINT4
+          - Sprint1
+          - Sprint2
+          - Sprint3
+          - Sprint4
 
       issue_title:
         description: "Issue title"
@@ -61,28 +71,33 @@ permissions:
 
 jobs:
   create-issues:
-    name: Create Documentation Issues
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Create issues and add to project
+      - name: Create issues
         env:
           REPOSITORY: ${{ github.repository }}
           PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: "4"
+
           ISSUE_PREFIX: ${{ inputs.issue_prefix }}
           ISSUE_TITLE: ${{ inputs.issue_title }}
           ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
           REPETITIONS: ${{ inputs.repetitions }}
+
           SPRINT: ${{ inputs.sprint }}
           MICRO_SPRINT: ${{ inputs.micro_sprint }}
+
+          ASSIGNMENT_MODE: ${{ inputs.assignment_mode }}
+
           TRIGGERED_BY: ${{ github.actor }}
+
           ISSUE_TOKEN: ${{ github.token }}
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 
         run: |
-          chmod +x .github/scripts/create-documentation-issues.sh
-          .github/scripts/create-documentation-issues.sh
+          chmod +x .github/scripts/*.sh
+          .github/scripts/create-issues.sh
