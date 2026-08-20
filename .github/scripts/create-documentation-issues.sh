@@ -319,9 +319,9 @@ generate_issue_title() {
   local index="$1"
 
   if (( REPETITIONS > 1 )); then
-    echo "$ISSUE_PREFIX - $ISSUE_TITLE #$index"
+    echo "$ISSUE_PREFIX: $ISSUE_TITLE #$index"
   else
-    echo "$ISSUE_PREFIX - $ISSUE_TITLE"
+    echo "$ISSUE_PREFIX: $ISSUE_TITLE"
   fi
 }
 
