@@ -226,7 +226,7 @@ create_issue() {
   )
 
   if [[ "$ASSIGN_TEAM" == "true" ]]; then
-    echo "Assigning issue to all team members."
+    echo "Assigning issue to all team members." >&2
 
     for member in "${TEAM_MEMBERS[@]}"; do
       args+=(-f "assignees[]=$member")
