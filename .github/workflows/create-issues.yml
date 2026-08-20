@@ -1,0 +1,228 @@
+name: Create  Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_title:
+        description: "Issue title"
+        required: true
+        type: string
+
+      issue_documentation:
+        description: "Issue documentation"
+        required: true
+        type: string
+
+      repetitions:
+        description: "Number of issues"
+        required: true
+        default: "1"
+        type: string
+
+      sprint:
+        description: "Sprint"
+        required: true
+        type: choice
+        options:
+          - Sprint 1
+
+      micro_sprint:
+        description: "Micro Sprint"
+        required: false
+        type: choice
+        default: "None"
+        options:
+          - None
+          - Micro Sprint 1
+          - Micro Sprint 2
+          - Micro Sprint 3
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+
+    env:
+      REPOSITORY: ${{ github.repository }}
+
+      PROJECT_OWNER: ISIS3510-Team12
+      PROJECT_NUMBER: "4"
+
+    steps:
+      # ---------------------------------------------------------
+      # Get Project IDs and Iteration IDs
+      # ---------------------------------------------------------
+      - name: Get project fields and iterations
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+
+          SPRINT: ${{ inputs.sprint }}
+          MICRO_SPRINT: ${{ inputs.micro_sprint }}
+
+        run: |
+          PROJECT_JSON=$(gh project view "$PROJECT_NUMBER" \
+            --owner "$PROJECT_OWNER" \
+            --format json)
+
+          PROJECT_ID=$(echo "$PROJECT_JSON" | jq -r '.id')
+
+          FIELD_JSON=$(gh project field-list "$PROJECT_NUMBER" \
+            --owner "$PROJECT_OWNER" \
+            --format json)
+
+          SPRINT_FIELD_ID=$(echo "$FIELD_JSON" | jq -r \
+            '.fields[] | select(.name == "Sprint") | .id')
+
+          MICRO_SPRINT_FIELD_ID=$(echo "$FIELD_JSON" | jq -r \
+            '.fields[] | select(.name == "Micro Sprint") | .id')
+
+          ITERATIONS=$(gh api graphql -f query='
+            query($login: String!, $number: Int!) {
+              organization(login: $login) {
+                projectV2(number: $number) {
+                  fields(first: 50) {
+                    nodes {
+                      ... on ProjectV2IterationField {
+                        id
+                        name
+                        configuration {
+                          iterations {
+                            id
+                            title
+                          }
+                          completedIterations {
+                            id
+                            title
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }' \
+            -F login="$PROJECT_OWNER" \
+            -F number="$PROJECT_NUMBER")
+
+          SPRINT_ITERATION_ID=$(echo "$ITERATIONS" | jq -r \
+            --arg name "$SPRINT" '
+              .data.organization.projectV2.fields.nodes[]
+              | select(.name == "Sprint")
+              | (
+                  .configuration.iterations
+                  + .configuration.completedIterations
+                )[]
+              | select(.title == $name)
+              | .id
+            ')
+
+          if [ "$MICRO_SPRINT" != "None" ]; then
+
+            MICRO_SPRINT_ITERATION_ID=$(echo "$ITERATIONS" | jq -r \
+              --arg name "$MICRO_SPRINT" '
+                .data.organization.projectV2.fields.nodes[]
+                | select(.name == "Micro Sprint")
+                | (
+                    .configuration.iterations
+                    + .configuration.completedIterations
+                  )[]
+                | select(.title == $name)
+                | .id
+              ')
+
+          else
+            MICRO_SPRINT_ITERATION_ID=""
+          fi
+
+          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+
+          echo "SPRINT_FIELD_ID=$SPRINT_FIELD_ID" >> "$GITHUB_ENV"
+          echo "SPRINT_ITERATION_ID=$SPRINT_ITERATION_ID" >> "$GITHUB_ENV"
+
+          echo "MICRO_SPRINT_FIELD_ID=$MICRO_SPRINT_FIELD_ID" >> "$GITHUB_ENV"
+          echo "MICRO_SPRINT_ITERATION_ID=$MICRO_SPRINT_ITERATION_ID" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------
+      # Create Issues
+      # ---------------------------------------------------------
+      - name: Create documentation issues
+        env:
+          # GitHub Actions creates the issue
+          GH_TOKEN: ${{ github.token }}
+
+          ISSUE_TITLE: ${{ inputs.issue_title }}
+          ISSUE_DOCUMENTATION: ${{ inputs.issue_documentation }}
+          REPETITIONS: ${{ inputs.repetitions }}
+
+          # Person who pressed "Run workflow"
+          TRIGGERED_BY: ${{ github.actor }}
+
+        run: |
+          for i in $(seq 1 "$REPETITIONS"); do
+
+            if [ "$REPETITIONS" -gt 1 ]; then
+              TITLE="$ISSUE_TITLE #$i"
+            else
+              TITLE="$ISSUE_TITLE"
+            fi
+
+            echo "Creating: $TITLE"
+
+            BODY="$ISSUE_DOCUMENTATION
+
+          ---
+
+          Created through GitHub Actions by @$TRIGGERED_BY"
+
+            ISSUE_URL=$(gh issue create \
+              --repo "$REPOSITORY" \
+              --title "$TITLE" \
+              --body "$BODY")
+
+            echo "Created: $ISSUE_URL"
+
+            echo "$ISSUE_URL" >> issue_urls.txt
+
+          done
+
+      # ---------------------------------------------------------
+      # Add Issues to Project and assign Sprint fields
+      # ---------------------------------------------------------
+      - name: Add issues to Backlog project
+        env:
+          # PAT is used only for Organization Project access
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+
+        run: |
+          while read -r ISSUE_URL; do
+
+            echo "Adding to project: $ISSUE_URL"
+
+            ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" \
+              --owner "$PROJECT_OWNER" \
+              --url "$ISSUE_URL" \
+              --format json \
+              --jq '.id')
+
+            # Assign Sprint
+            gh project item-edit \
+              --id "$ITEM_ID" \
+              --project-id "$PROJECT_ID" \
+              --field-id "$SPRINT_FIELD_ID" \
+              --iteration-id "$SPRINT_ITERATION_ID"
+
+            # Assign Micro Sprint only when selected
+            if [ -n "$MICRO_SPRINT_ITERATION_ID" ]; then
+
+              gh project item-edit \
+                --id "$ITEM_ID" \
+                --project-id "$PROJECT_ID" \
+                --field-id "$MICRO_SPRINT_FIELD_ID" \
+                --iteration-id "$MICRO_SPRINT_ITERATION_ID"
+
+            fi
+
+          done < issue_urls.txt
